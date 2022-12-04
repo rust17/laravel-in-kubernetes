@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: laravel-in-kubernetes-mysql
+  labels:
+    tier: backend
+    layer: database
+spec:
+  selector:
+    matchLabels:
+      tier: backend
+      layer: database
+  serviceName: laravel-in-kubernetes-mysql
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        tier: backend
+        layer: database
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        ports:
+        - name: mysql
+          containerPort: 3306
+        env:
+        - name: MYSQL_RANDOM_ROOT_PASSWORD
+          value: '1'
+        - name: MYSQL_DATABASE
+          value: laravel-in-kubernetes
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: laravel-in-kubernetes-mysql
+              key: DB_USERNAME
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: laravel-in-kubernetes-mysql
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        resources:
+          requests:
+            cpu: 300m
+            memory: 256Mi
+        livenessProbe:
+          exec:
+            command:
+            - bash
+            - -c
+            - mysqladmin -u ${MYSQL_USER} -p${MYSQL_PASSWORD} ping
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: laravel-in-kubernetes-mysql
